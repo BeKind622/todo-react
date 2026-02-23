@@ -21,17 +21,27 @@ const FILTER_MAP = {
 const FILTER_NAMES = Object.keys(FILTER_MAP);
 
 function App(props) {
-  const [tasks, setTasks] = useState(props.tasks);
+  const [tasks, setTasks] = useState(() => {
+    const saved = localStorage.getItem("tasks");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return props.tasks;
+      }
+    }
+    return props.tasks;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+  }, [tasks]);
+
   const [filter, setFilter] = useState("All");
 
   function toggleTaskCompleted(id) {
     const updatedTasks = tasks.map((task) => {
-      // if this task has the same ID as the edited task
-      if (id === task.id) {
-        // use object spread to make a new obkect
-        // whose `completed` prop has been inverted
-        return { ...task, completed: !task.completed };
-      }
+      if (id === task.id) return { ...task, completed: !task.completed };
       return task;
     });
     setTasks(updatedTasks);
@@ -44,12 +54,7 @@ function App(props) {
 
   function editTask(id, newName) {
     const editedTaskList = tasks.map((task) => {
-      // if this task has the same ID as the edited task
-      if (id === task.id) {
-        // Copy the task and update its name
-        return { ...task, name: newName };
-      }
-      // Return the original task if it's not the edited task
+      if (id === task.id) return { ...task, name: newName };
       return task;
     });
     setTasks(editedTaskList);
@@ -79,7 +84,7 @@ function App(props) {
   ));
 
   function addTask(name) {
-    const newTask = { id: "todo-" + nanoid(), name: name, completed: false };
+    const newTask = { id: "todo-" + nanoid(), name, completed: false };
     setTasks([...tasks, newTask]);
   }
 
