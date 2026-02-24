@@ -3,6 +3,7 @@ import Form from "./components/Form";
 import FilterButton from "./components/FilterButton";
 import Todo from "./components/Todo";
 import { nanoid } from "nanoid";
+import { use } from "react";
 
 function usePrevious(value) {
   const ref = useRef(null);
@@ -64,6 +65,11 @@ function App(props) {
   const [filter, setFilter] = useState("All");
 // new hook for geolocation
 const [lastInsertedId, setLastInsertedId] = useState(""); 
+
+  useEffect(() => {
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+  }, [tasks]);
+ 
 
   function toggleTaskCompleted(id) {
     const updatedTasks = tasks.map((task) => {
