@@ -73,6 +73,8 @@ function Todo(props) {
         />
         <label className="todo-label" htmlFor={props.id}>
           {props.name}
+          &nbsp;| {props.latitude}
+          &nbsp;| {props.longitude}
         </label>
       </div>
       <div className="btn-group">

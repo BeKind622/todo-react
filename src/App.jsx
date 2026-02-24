@@ -32,12 +32,38 @@ function App(props) {
     }
     return props.tasks;
   });
+  // ================ GEOLOCATION ================
+ const geoFindMe = () => {
+ if (!navigator.geolocation) {
+ console.log("Geolocation is not supported by your browser");
+ } else {
+ console.log("Locating…");
+ navigator.geolocation.getCurrentPosition(success, error);
+ }
+ };
+ const success = (position) => {
+ const latitude = position.coords.latitude;
+ const longitude = position.coords.longitude;
+ console.log(latitude, longitude);
+ console.log(`Latitude: ${latitude}°, Longitude: ${longitude}°`);
+ console.log(`Try here: https://www.openstreetmap.org/#map=18/${latitude}/${longitude}`);
+ locateTask(lastInsertedId, {
+ latitude: latitude,
+ longitude: longitude,
+ error: "",
+ });};
+ const error = () => {
+ console.log("Unable to retrieve your location");
+ };
+   // ================ GEOLOCATION ================
 
   useEffect(() => {
     localStorage.setItem("tasks", JSON.stringify(tasks));
   }, [tasks]);
 
   const [filter, setFilter] = useState("All");
+// new hook for geolocation
+const [lastInsertedId, setLastInsertedId] = useState(""); 
 
   function toggleTaskCompleted(id) {
     const updatedTasks = tasks.map((task) => {
@@ -52,13 +78,30 @@ function App(props) {
     setTasks(remainingTasks);
   }
 
-  function editTask(id, newName) {
-    const editedTaskList = tasks.map((task) => {
-      if (id === task.id) return { ...task, name: newName };
-      return task;
-    });
-    setTasks(editedTaskList);
-  }
+  // this function replaces the editTask function, it locates the task by ID and updates its location property with the geolocation data
+ function locateTask(id, location) {
+ console.log("locate Task", id, " before");
+ console.log(location, tasks);
+ const locatedTaskList = tasks.map((task) => {
+ // if this task has the same ID as the edited task
+ if (id === task.id) {
+ //
+ return { ...task, location: location };
+ }
+ return task;
+ });
+ console.log(locatedTaskList);
+ setTasks(locatedTaskList);
+}
+
+  // edit function backup in case I mess this up
+  // function editTask(id, newName) {
+  //   const editedTaskList = tasks.map((task) => {
+  //     if (id === task.id) return { ...task, name: newName };
+  //     return task;
+  //   });
+  //   setTasks(editedTaskList);
+  // }
 
   const taskList = tasks
     ?.filter(FILTER_MAP[filter])
@@ -68,9 +111,11 @@ function App(props) {
         name={task.name}
         completed={task.completed}
         key={task.id}
+        latitude={task.latitude}
+        longitude={task.longitude}
         toggleTaskCompleted={toggleTaskCompleted}
         deleteTask={deleteTask}
-        editTask={editTask}
+        locateTask={locateTask}
       />
     ));
 
@@ -84,7 +129,13 @@ function App(props) {
   ));
 
   function addTask(name) {
-    const newTask = { id: "todo-" + nanoid(), name, completed: false };
+    const id = "todo-" + nanoid();
+    const newTask = { 
+      id: id, 
+      name: name, 
+      completed: false, 
+      location: {latitude: "##", longitude: "##", error: "##"}, };
+    setLastInsertedId(id);
     setTasks([...tasks, newTask]);
   }
 
@@ -103,7 +154,7 @@ function App(props) {
   return (
     <div className="todoapp stack-large">
       <h1>TodoMatic</h1>
-      <Form addTask={addTask} />
+      <Form addTask={addTask} geoFindMe={geoFindMe} /> {""}
       <div className="filters btn-group stack-exception">{filterList}</div>
       <h2 id="list-heading" tabIndex="-1" ref={listHeadingRef}>
         {headingText}
