@@ -3,7 +3,6 @@ import Form from "./components/Form";
 import FilterButton from "./components/FilterButton";
 import Todo from "./components/Todo";
 import { nanoid } from "nanoid";
-import { use } from "react";
 
 function usePrevious(value) {
   const ref = useRef(null);
@@ -21,59 +20,60 @@ const FILTER_MAP = {
 
 const FILTER_NAMES = Object.keys(FILTER_MAP);
 
-function App(props) {
-  const [tasks, setTasks] = useState(() => {
-    const saved = localStorage.getItem("tasks");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return props.tasks;
-      }
+export default function App(props) {
+  const geoFindMe = () => {
+    if (!navigator.geolocation) {
+      console.log("Geolocation is not supported by your browser");
+    } else {
+      console.log("Locating…");
+      navigator.geolocation.getCurrentPosition(success, error);
     }
-    return props.tasks;
-  });
-  // ================ GEOLOCATION ================
- const geoFindMe = () => {
- if (!navigator.geolocation) {
- console.log("Geolocation is not supported by your browser");
- } else {
- console.log("Locating…");
- navigator.geolocation.getCurrentPosition(success, error);
- }
- };
- const success = (position) => {
- const latitude = position.coords.latitude;
- const longitude = position.coords.longitude;
- console.log(latitude, longitude);
- console.log(`Latitude: ${latitude}°, Longitude: ${longitude}°`);
- console.log(`Try here: https://www.openstreetmap.org/#map=18/${latitude}/${longitude}`);
- locateTask(lastInsertedId, {
- latitude: latitude,
- longitude: longitude,
- error: "",
- });};
- const error = () => {
- console.log("Unable to retrieve your location");
- };
-   // ================ GEOLOCATION ================
+  };
 
-  useEffect(() => {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-  }, [tasks]);
+  const success = (position) => {
+    const latitude = position.coords.latitude;
+    const longitude = position.coords.longitude;
+    console.log(latitude, longitude);
 
+    console.log(`Latitude: ${latitude}°, Longitude: ${longitude}°`);
+    console.log(
+      `Try it here: https://www.openstreetmap.org/#map=18/${latitude}/${longitude}`
+    );
+    locateTask(lastInsertedId, {
+      latitude: latitude,
+      longitude: longitude,
+      error: "",
+      mapURL: `https://www.openstreetmap.org/#map=18/${latitude}/${longitude}`, // W07 CAM
+      smsURL: `sms://00447700900xxxx?body=https://maps.google.com/?q=${latitude},${longitude}`, // W07 CAM
+    });
+  };
+
+  const error = () => {
+    console.log("Unable to retrieve your location");
+  };
+
+  function usePersistedState(key, defaultValue) {
+    const [state, setState] = useState(
+      () => JSON.parse(localStorage.getItem(key)) || defaultValue
+    );
+    useEffect(() => {
+      localStorage.setItem(key, JSON.stringify(state));
+    }, [key, state]);
+    return [state, setState];
+  }
+
+  const [tasks, setTasks] = usePersistedState("tasks", []);
   const [filter, setFilter] = useState("All");
-// new hook for geolocation
-const [lastInsertedId, setLastInsertedId] = useState(""); 
-
-  useEffect(() => {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-  }, [tasks]);
- 
+  const [lastInsertedId, setLastInsertedId] = useState("");
 
   function toggleTaskCompleted(id) {
     const updatedTasks = tasks.map((task) => {
-      if (id === task.id) return { ...task, completed: !task.completed };
+      // if this task has the same ID as the edited task
+      if (id === task.id) {
+        // use object spread to make a new obkect
+        // whose `completed` prop has been inverted
+        return { ...task, completed: !task.completed };
+      }
       return task;
     });
     setTasks(updatedTasks);
@@ -84,46 +84,60 @@ const [lastInsertedId, setLastInsertedId] = useState("");
     setTasks(remainingTasks);
   }
 
-  // this function replaces the editTask function, it locates the task by ID and updates its location property with the geolocation data
- function locateTask(id, location) {
- console.log("locate Task", id, " before");
- console.log(location, tasks);
- const locatedTaskList = tasks.map((task) => {
- // if this task has the same ID as the edited task
- if (id === task.id) {
- //
- return { ...task, location: location };
- }
- return task;
- });
- console.log(locatedTaskList);
- setTasks(locatedTaskList);
-}
+  function editTask(id, newName) {
+    const editedTaskList = tasks.map((task) => {
+      // if this task has the same ID as the edited task
+      if (id === task.id) {
+        return { ...task, name: newName }; // Copy the task and update its name
+      }
+      return task; // Return the original task if it's not the edited task
+    });
+    setTasks(editedTaskList);
+  }
 
-  // edit function backup in case I mess this up
-  // function editTask(id, newName) {
-  //   const editedTaskList = tasks.map((task) => {
-  //     if (id === task.id) return { ...task, name: newName };
-  //     return task;
-  //   });
-  //   setTasks(editedTaskList);
-  // }
+  function locateTask(id, location) {
+    console.log("locate Task", id, " before");
+    console.log(location, tasks);
+    const locatedTaskList = tasks.map((task) => {
+      // if this task has the same ID as the edited task
+      if (id === task.id) {
+        //
+        return { ...task, location: location };
+      }
+      return task;
+    });
+    console.log(locatedTaskList);
+    setTasks(locatedTaskList);
+  }
 
-  const taskList = tasks
-    ?.filter(FILTER_MAP[filter])
-    .map((task) => (
-      <Todo
-        id={task.id}
-        name={task.name}
-        completed={task.completed}
-        key={task.id}
-        latitude={task.latitude}
-        longitude={task.longitude}
-        toggleTaskCompleted={toggleTaskCompleted}
-        deleteTask={deleteTask}
-        locateTask={locateTask}
-      />
-    ));
+  // W07 CAM - NEW FUNCTION
+  function photoedTask(id) {
+    console.log("photoedTask", id);
+    const photoedTaskList = tasks.map((task) => {
+      // if this task has the same ID as the edited task
+      if (id === task.id) {
+        //
+        return { ...task, photo: true };
+      }
+      return task;
+    });
+    console.log(photoedTaskList);
+    setTasks(photoedTaskList);
+  }
+
+  const taskList = tasks?.filter(FILTER_MAP[filter]).map((task) => (
+    <Todo
+      id={task.id}
+      name={task.name}
+      completed={task.completed}
+      key={task.id}
+      location={task.location} // W07 IMPROVEMENT
+      toggleTaskCompleted={toggleTaskCompleted}
+      photoedTask={photoedTask} // W07 CAM
+      deleteTask={deleteTask}
+      editTask={editTask}
+    />
+  ));
 
   const filterList = FILTER_NAMES.map((name) => (
     <FilterButton
@@ -136,11 +150,12 @@ const [lastInsertedId, setLastInsertedId] = useState("");
 
   function addTask(name) {
     const id = "todo-" + nanoid();
-    const newTask = { 
-      id: id, 
-      name: name, 
-      completed: false, 
-      location: {latitude: "##", longitude: "##", error: "##"}, };
+    const newTask = {
+      id: id,
+      name: name,
+      completed: false,
+      location: { latitude: "##", longitude: "##", error: "##" },
+    };
     setLastInsertedId(id);
     setTasks([...tasks, newTask]);
   }
@@ -152,15 +167,15 @@ const [lastInsertedId, setLastInsertedId] = useState("");
   const prevTaskLength = usePrevious(tasks.length);
 
   useEffect(() => {
-    if (tasks.length < prevTaskLength) {
+    if (tasks.length < prevTaskLength === -1) {
       listHeadingRef.current.focus();
     }
   }, [tasks.length, prevTaskLength]);
 
   return (
     <div className="todoapp stack-large">
-      <h1>TodoMatic</h1>
-      <Form addTask={addTask} geoFindMe={geoFindMe} /> {""}
+      <h1>W07 TodoMatic</h1>
+      <Form addTask={addTask} geoFindMe={geoFindMe} />{" "}
       <div className="filters btn-group stack-exception">{filterList}</div>
       <h2 id="list-heading" tabIndex="-1" ref={listHeadingRef}>
         {headingText}
@@ -175,5 +190,3 @@ const [lastInsertedId, setLastInsertedId] = useState("");
     </div>
   );
 }
-
-export default App;
